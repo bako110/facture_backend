@@ -12,20 +12,41 @@ const app = express();
 // Connexion à la base de données
 connectDB();
 
+// Créer un utilisateur par défaut si aucun n'existe
+const initializeDefaultUser = async () => {
+  try {
+    const User = require('./models/User');
+    const userCount = await User.countDocuments();
+    
+    if (userCount === 0) {
+      const defaultUser = new User({
+        username: 'admin',
+        password: '1234'
+      });
+      await defaultUser.save();
+      console.log('👤 Utilisateur par défaut créé: admin / 1234');
+    }
+  } catch (error) {
+    console.error('Erreur lors de la création de l\'utilisateur par défaut:', error.message);
+  }
+};
+
+// Initialiser après la connexion DB
+setTimeout(initializeDefaultUser, 2000);
+
 // Middlewares de sécurité
 app.use(helmet());
 
-// CORS
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',') 
-  : ['http://localhost:8081'];
+// CORS - Accepter toutes les origines
+const allowedOrigins = process.env.ALLOWED_ORIGINS || '*';
 
 app.use(cors({
-  origin: function (origin, callback) {
+  origin: allowedOrigins === '*' ? true : function (origin, callback) {
     // Autoriser les requêtes sans origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+    const origins = allowedOrigins.split(',');
+    if (origins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       callback(new Error('Non autorisé par CORS'));
