@@ -48,6 +48,10 @@ const invoiceSchema = new mongoose.Schema({
     required: true,
     default: Date.now
   },
+  dueDate: {
+    type: Date,
+    required: true
+  },
   client: {
     id: { type: String, required: true },
     name: { type: String, required: true },

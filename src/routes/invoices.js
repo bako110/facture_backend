@@ -61,6 +61,8 @@ router.get('/:id', async (req, res) => {
 router.post('/', [
   body('id').notEmpty().withMessage('L\'ID est requis'),
   body('invoiceNumber').trim().notEmpty().withMessage('Le numéro de facture est requis'),
+  body('date').optional().isISO8601().withMessage('La date doit être au format ISO 8601'),
+  body('dueDate').notEmpty().withMessage('La date d\'échéance est requise'),
   body('client').notEmpty().withMessage('Le client est requis'),
   body('client.id').notEmpty().withMessage('L\'ID du client est requis'),
   body('client.name').trim().notEmpty().withMessage('Le nom du client est requis'),
@@ -81,7 +83,7 @@ router.post('/', [
   }
 
   try {
-    const { id, invoiceNumber, date, client, items, subtotal, tva, total } = req.body;
+    const { id, invoiceNumber, date, dueDate, client, items, subtotal, tva, total } = req.body;
 
     // Vérifier si la facture existe déjà
     let invoice = await Invoice.findOne({ id });
@@ -106,6 +108,7 @@ router.post('/', [
       id,
       invoiceNumber,
       date: date || new Date(),
+      dueDate: dueDate || new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 jours par défaut
       client,
       items,
       subtotal,
@@ -121,6 +124,36 @@ router.post('/', [
     });
   } catch (error) {
     console.error('Erreur lors de la création de la facture:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * @route   DELETE /api/invoices/:id
+ * @desc    Supprimer une facture
+ * @access  Public
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const invoice = await Invoice.findOneAndDelete({ id: req.params.id });
+
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        error: 'Facture non trouvée'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Facture supprimée avec succès',
+      data: invoice
+    });
+  } catch (error) {
+    console.error('Erreur lors de la suppression de la facture:', error);
     res.status(500).json({
       success: false,
       error: 'Erreur serveur'
